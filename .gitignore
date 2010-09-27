@@ -1,0 +1,19 @@
+# directories # 
+###############
+lib/
+bin/
+
+# Compiled source #
+###################
+*.class
+*.dll
+*.exe
+*.o
+*.so
+
+# Packages #
+############
+*.gz
+*.jar
+*.tar
+*.zip
