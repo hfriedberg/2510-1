@@ -33,9 +33,9 @@ public class Main {
         
         // get parameters from the json object:
         String algorithm = (String)obj.get("synchronization_technique");
-        System.out.println(algorithm); // DEBUG
+        //System.out.println(algorithm); // DEBUG
         int numProcesses = ((Long)obj.get("process_number")).intValue();
-        System.out.println(numProcesses); // DEBUG
+        //System.out.println(numProcesses); // DEBUG
         processes = new Process[numProcesses];
         
         // create processes with tasks:
