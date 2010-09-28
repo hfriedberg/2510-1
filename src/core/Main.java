@@ -13,16 +13,40 @@ import org.json.simple.parser.JSONParser;
  *  Sep 26, 2010 7:34:40 PM
  */
 public class Main {
-    
-    static Process[] processes;
+
     static final String fileName = "out.txt";
-    
+    static String algorithm;
+    static int numProcesses;
+
+    /**
+     * 
+     * @param args
+     * @throws Exception
+     */
     public static void main(String[] args) throws Exception {
-        
+        int processID = -1;
+        try {
+            processID = Integer.parseInt(args[0]);
+        } catch (NumberFormatException nfe) {
+            System.err.println(nfe.getMessage());
+            System.exit(-1);
+        }
+
+        JSONArray tasks = parseInput(processID);
+        new Process(processID, tasks).run();
+    }
+
+    /**
+     * 
+     * @param pid
+     * @return
+     * @throws Exception
+     */
+    private static JSONArray parseInput(int pid) throws Exception {
         FileReader fr = null;
         JSONObject obj = null;
         JSONParser parser = new JSONParser();
-               
+
         // parse the JSON file for input data:
         try {
             fr = new FileReader("input.json");
@@ -30,18 +54,10 @@ public class Main {
         } finally {
             fr.close();
         }
-        
+
         // get parameters from the json object:
-        String algorithm = (String)obj.get("synchronization_technique");
-        //System.out.println(algorithm); // DEBUG
-        int numProcesses = ((Long)obj.get("process_number")).intValue();
-        //System.out.println(numProcesses); // DEBUG
-        processes = new Process[numProcesses];
-        
-        // create processes with tasks:
-        for (int i=1; i <= numProcesses; i++) {
-            processes[i-1] = new Process(i,(JSONArray)obj.get(i + ""));
-        }
-        
+        algorithm = (String)obj.get("synchronization_technique");
+        numProcesses = ((Long)obj.get("process_number")).intValue();
+        return (JSONArray)obj.get(pid + "");
     }
 }

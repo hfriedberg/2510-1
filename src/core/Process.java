@@ -12,12 +12,12 @@ import org.json.simple.JSONArray;
  */
 public class Process implements Runnable {
     
-    private int ID;
+    private int processID;
     private Deque<Task> tasks;
     
     public Process(int ID, JSONArray taskArray) {
         
-        this.ID = ID;
+        processID = ID;
         tasks = new ArrayDeque<Task>();
         
         for (int j=0; j < taskArray.size(); j++) {
@@ -29,7 +29,8 @@ public class Process implements Runnable {
                     );
         }
     }
-    
+
+    @Override
     public void run() {
         
     }
