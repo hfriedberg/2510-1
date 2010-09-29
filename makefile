@@ -13,7 +13,8 @@ CLASSPATH = lib/*:
 all: build
 
 build:
-	javac -sourcepath src -d bin -cp $(CLASSPATH) core/$(MAIN).java
+	if [ ! -d bin ]; then mkdir bin; fi
+	javac -sourcepath src -d bin -cp $(CLASSPATH) src/core/$(MAIN).java
 
 run:
 	java -cp bin:$(CLASSPATH) core.$(MAIN)

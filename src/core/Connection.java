@@ -1,49 +1,91 @@
 
 package core;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.util.Queue;
+import static core.Message.Type;
 
 /**
  *
  * @author Yann Le Gall
  * ylegall@gmail.com
- * @date Sep 28, 2010
  */
-public class Connection {
+public class Connection implements Runnable {
 
     private Socket socket;
-    private BufferedReader in;
-    private PrintWriter out;
+    private ObjectInputStream input;
+    private ObjectOutputStream output;
+    private Queue<Message> messages;
+    private boolean connected;
 
-    Connection(Socket socket) throws IOException
+    Connection(Socket socket, Queue<Message> messages) throws IOException
     {
         this.socket = socket;
-        out = new PrintWriter(socket.getOutputStream());
-        in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        output = new ObjectOutputStream(socket.getOutputStream());
+        input = new ObjectInputStream(socket.getInputStream());
+        this.messages = messages;
+    }
+
+    /**
+     * 
+     * @param message
+     * @throws IOException
+     */
+    void write(Message message) throws IOException {
+        message.timeStamp();
+        output.writeObject(message);
+        output.flush();
     }
     
-    void write(String message) {
-        out.println(message);
-        out.flush();
-    }
-    
-    String read() throws IOException {
-        String message = null;
-        while (message == null) {
-            System.out.println("HERE!");
-            message = in.readLine();
+
+    /**
+     *
+     */
+    @Override
+    public void run() {
+
+        connected = true;
+        Message msg = null;
+
+        // message loop
+        do {
+            try {
+                msg = (Message) input.readObject();
+                messages.add(msg);
+                if(msg.type == Type.END) {
+                    connected = false;
+                }
+
+            } catch (IOException ex) {
+                break; // close connection
+            } catch (ClassNotFoundException ex) {
+                // TODO: ignore and continue?
+                continue;
+            }
+
+        } while (connected);
+
+        // cleanup
+        try {
+            input.close();
+            // TODO: send close message
+            output.close();
+            socket.close();
+        } catch (IOException ioe) {
+            // print and ignore
         }
-        return message;
+
     }
-    
-    void close() throws IOException {
-        in.close();
-        out.close();
-        socket.close();
+
+    void disconnect() {
+        connected = false;
+        try {
+            write(new Message(Type.END, ""));
+        } catch (IOException ioe) {
+        }
     }
-    
+
 }
