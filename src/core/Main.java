@@ -10,13 +10,17 @@ import org.json.simple.parser.JSONParser;
 /**
  *  @author Yann Le Gall
  *  ylegall@gmail.com
- *  Sep 26, 2010 7:34:40 PM
+ * 
  */
 public class Main {
 
-    static final String fileName = "out.txt";
+    static final String FILENAME = "out.txt";
     static String algorithm;
     static int numProcesses;
+    public static final int PORT = 3333;
+    public static final String HOST = "localhost";
+    
+    private Main() {}
 
     /**
      * 
@@ -25,6 +29,7 @@ public class Main {
      */
     public static void main(String[] args) throws Exception {
         int processID = -1;
+        
         try {
             processID = Integer.parseInt(args[0]);
         } catch (NumberFormatException nfe) {
@@ -58,6 +63,6 @@ public class Main {
         // get parameters from the json object:
         algorithm = (String)obj.get("synchronization_technique");
         numProcesses = ((Long)obj.get("process_number")).intValue();
-        return (JSONArray)obj.get(pid + "");
+        return (JSONArray)obj.get((pid + 1) + "");
     }
 }
