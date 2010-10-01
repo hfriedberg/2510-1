@@ -4,9 +4,10 @@ package core;
 /**
  *  @author Yann Le Gall
  *  ylegall@gmail.com
- *  Sep 26, 2010 8:01:11 PM
+ * 
  */
 public class Task {
+    
     public static final char READ = 'r';
     public static final char WRITE = 'w';
     

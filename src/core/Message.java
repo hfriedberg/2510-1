@@ -18,9 +18,15 @@ public class Message implements Comparable<Message>, Serializable
         INFO,
         CS_REQUEST,
         CS_RELEASE,
+        TOKEN,
         END
     }
 
+    /**
+     * 
+     * @param type
+     * @param content
+     */
     Message(Message.Type type, String content) {
         this.type = type;
         this.content = content;
@@ -33,11 +39,20 @@ public class Message implements Comparable<Message>, Serializable
        this.timestamp = System.currentTimeMillis();
     }
 
+    /**
+     * 
+     * @param o
+     * @return
+     */
     @Override
     public int compareTo(Message o) {
         return (int) (this.timestamp - o.timestamp); //TODO: reverse this order
     }
 
+    /**
+     * 
+     * @return
+     */
     @Override
     public String toString() {
         return String.format("{%s:\"%s\":%d}",

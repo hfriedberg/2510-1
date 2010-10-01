@@ -1,6 +1,7 @@
 
 package core;
 
+import java.util.logging.Logger;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -20,6 +21,7 @@ public class Connection implements Runnable {
     private ObjectOutputStream output;
     private Queue<Message> messages;
     private boolean connected;
+    private static final Logger logger = Logger.getLogger("core.Main");
 
     Connection(Socket socket, Queue<Message> messages) throws IOException
     {
@@ -60,9 +62,10 @@ public class Connection implements Runnable {
                 }
 
             } catch (IOException ex) {
+                logger.info(ex.getMessage());
                 break; // close connection
             } catch (ClassNotFoundException ex) {
-                // TODO: ignore and continue?
+                logger.severe(ex.getMessage());
                 continue;
             }
 
@@ -75,7 +78,7 @@ public class Connection implements Runnable {
             output.close();
             socket.close();
         } catch (IOException ioe) {
-            // print and ignore
+            logger.info(ioe.getMessage());
         }
 
     }
@@ -85,6 +88,7 @@ public class Connection implements Runnable {
         try {
             write(new Message(Type.END, ""));
         } catch (IOException ioe) {
+            logger.info(ioe.getMessage());
         }
     }
 
