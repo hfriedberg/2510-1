@@ -16,6 +16,7 @@ public class Message implements Comparable<Message>, Serializable
     static enum Type {
         ACK,
         INFO,
+        IDLE,
         CS_REQUEST,
         CS_RELEASE,
         TOKEN,
@@ -46,7 +47,7 @@ public class Message implements Comparable<Message>, Serializable
      */
     @Override
     public int compareTo(Message o) {
-        return (int) (this.timestamp - o.timestamp); //TODO: reverse this order
+        return (int) (this.timestamp - o.timestamp);
     }
 
     /**

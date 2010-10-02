@@ -62,7 +62,7 @@ public class Connection implements Runnable {
                 }
 
             } catch (IOException ex) {
-                logger.info(ex.getMessage());
+                logger.warning(ex.getMessage());
                 break; // close connection
             } catch (ClassNotFoundException ex) {
                 logger.severe(ex.getMessage());
@@ -73,12 +73,13 @@ public class Connection implements Runnable {
 
         // cleanup
         try {
+            if (!socket.isClosed()) {
+                socket.close();
+            }
             input.close();
-            // TODO: send close message
             output.close();
-            socket.close();
         } catch (IOException ioe) {
-            logger.info(ioe.getMessage());
+            logger.warning(ioe.getMessage());
         }
 
     }

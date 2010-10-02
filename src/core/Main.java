@@ -50,7 +50,7 @@ public class Main {
     public static void main(String[] args) throws Exception {
         
         configureLogging(Level.ALL);
-        
+
         JSONArray tasks = parseInput();
         new Process(processID, tasks).run();
     }
@@ -67,7 +67,7 @@ public class Main {
         JSONParser parser = new JSONParser();
 
         // parse the JSON file for input data:
-        logger.info("parsing JSON input file.");
+        logger.info("parsing JSON input file.\n");
         try {
             fr = new FileReader("input.json");
             obj = (JSONObject)parser.parse(fr);
@@ -99,7 +99,7 @@ public class Main {
         sb.append('_');
         sb.append(System.nanoTime() % 1000);
         String guid = sb.toString();
-        logger.info(String.format("generating GUID: %s", guid));
+        logger.info(String.format("generating GUID: %s\n", guid));
         return guid;
     }
     
@@ -108,16 +108,17 @@ public class Main {
      */
     public static void discoverPeers() {
         
-        // create a folder
+        // create a folder on AFS to
+        // store peer information
         File dir = new File("peer-info");
         if (!dir.exists()) {
             dir.mkdir();
             dir.deleteOnExit();
         }
         
-        String myID = getGUID();
         
-        // touch a file with name as guid
+        // touch a file with guid as file name
+        String myID = getGUID();
         try {
             File f = new File("peer-info/" + myID);
             f.createNewFile();
@@ -126,6 +127,7 @@ public class Main {
             logger.warning(e.getMessage());
         }
         
+        // wait for other peers to become active
         String[] files = dir.list();
         logger.info("trying to discover other peers...");
         while (files.length < numProcesses) {
@@ -136,8 +138,9 @@ public class Main {
                 logger.warning(ie.getMessage());
             }
         }
-        logger.fine(Arrays.toString(files));
         
+        // sort the file names to decide IDs
+        // and to learn hostnames
         Arrays.sort(files);
         for (int i=0; i < files.length; i++) {
             if (files[i].equals(myID)) {
@@ -145,7 +148,7 @@ public class Main {
                 processID = i;
             } else {
                 String host = files[i].split("_")[0];
-                logger.fine(String.format("process %d is on %s", i, host));
+                logger.fine(String.format("peer %d is on %s", i, host));
                 hostNames[i] = (host.equals(HOST))? "localhost": host;
             }
         }
@@ -168,7 +171,6 @@ public class Main {
           }
         });
         logger.addHandler(h);
-        
         logger.setLevel(level);
         logger.getHandlers()[0].setLevel(level);
     }
