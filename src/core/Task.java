@@ -21,5 +21,9 @@ public class Task {
         this.duration = duration;
     }
     
+    @Override
+    public String toString() {
+        return String.format("[%d, %c, %d]", startTime, action, duration);
+    }
     
 }

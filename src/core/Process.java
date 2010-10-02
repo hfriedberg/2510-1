@@ -2,6 +2,7 @@
 package core;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -9,7 +10,9 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Queue;
 import java.util.concurrent.PriorityBlockingQueue;
+import java.util.logging.Level;
 import java.util.logging.Logger;
+import static core.Message.Type;
 import org.json.simple.JSONArray;
 
 /**
@@ -25,6 +28,7 @@ public class Process implements Runnable {
     private ServerSocket serverSocket;
     private Queue<Message> messages;
     private boolean hasToken;
+    private FileWriter fileWriter;
     private static final Logger logger = Logger.getLogger("core.Main");
     
     public Process(int ID, JSONArray taskArray) throws IOException {
@@ -65,21 +69,20 @@ public class Process implements Runnable {
                         new Thread(connections[i]).start();
                     }
                 } catch (IOException ioe) {
-//                    System.out.printf("\rwaiting for peer %d", i);
-                    logger.info(String.format("\rwaiting for peerr %d", i));
+                    logger.info(String.format("waiting for peer %d", i));
                     continue connect_loop;
                 }
                 break connect_loop;
             }
         }
-        System.out.println();
 
         // act as a server for all larger pIDs:
         for (int i = pID + 1; i < Main.numProcesses; i++) {
+            logger.info(String.format("waiting for peer %d", i));
             connections[i] = new Connection(serverSocket.accept(), messages);
             new Thread(connections[i]).start();
-            logger.info(String.format("connected to peer %d\n", i));
         }
+        logger.info("all peers connected");
         
     }
 
@@ -93,51 +96,76 @@ public class Process implements Runnable {
         File sharedFile = new File(Main.FILENAME);
         try {
             sharedFile.createNewFile();
+            fileWriter = new FileWriter(sharedFile);
         } catch (IOException ioe) {
+            logger.warning(ioe.getMessage());
         }
         
+        // run an algorithm
+        logger.info(String.format("starting %s algorithm ", Main.algorithm));
         if (Main.algorithm.equals("tokenless")) {
-            
+            // TODO: implement
         } else {
             tokenRing();
         }
         
+        // close connections:
+        logger.info("process finished.");
+        for (Connection c : connections) {
+            try {
+                c.write(new Message(Type.END, null));
+            } catch (IOException ioe) {
+                logger.warning(ioe.getMessage());
+            }
+        }
         shutdown();
-        
-//        try {
-//            if (pID == 0) {
-//                for (int i = 1; i < connections.length; i++) {
-//                    connections[i].write(new Message(Type.INFO, "hello world from 0"));
-//                    connections[i].disconnect();
-//                }
-//            } else {
-//                Message msg = null;
-//                do {
-//
-//                    //do {} while (messages.isEmpty());
-//                    msg = messages.poll();
-//                    
-//                    System.out.println(msg);
-//                } while (msg.type != Type.END);
-//            }
-//
-//            shutdown();
-//
-//        } catch (IOException ioe) {
-//            System.err.println(ioe.getMessage());
-//        }
     }
     
     /**
      * 
      */
     private void tokenRing() {
+        Task task = null;
         Message msg = null;
-        if (pID == 0) { hasToken = true; }
+        if (pID == 0) {
+            hasToken = true;
+            msg = new Message(Type.TOKEN, null);
+        }
         
-        while (!hasToken) {
-            msg = messages.poll();
-            // TODO: finish me
+        while (!tasks.isEmpty()) {
+            task = tasks.poll();
+            while (!hasToken) {
+                msg = messages.poll();
+                if (msg != null) {
+                    hasToken = (msg.type == Type.TOKEN);
+                }
+            }
+            appendToFile(task);
+            
+            // pas the token to the next process
+            hasToken = false;
+            try {
+                connections[(pID + 1) % Main.numProcesses].write(msg);
+            } catch (IOException ioe) {
+                logger.warning(ioe.getMessage());
+            }
+        }
+    }
+    
+    /**
+     * 
+     * @param task
+     */
+    private void appendToFile(Task task) {
+        try {
+            logger.fine(String.format("writing to file, task = %s", task));
+            fileWriter.write(String.format("%d, %d, %d, %s\n",
+                    task.startTime,
+                    task.startTime + task.duration,
+                    this.pID,
+                    (task.action == Task.READ) ? "read" : "write"));
+        } catch (IOException ioe) {
+            logger.warning(ioe.getMessage());
         }
     }
 
@@ -146,6 +174,7 @@ public class Process implements Runnable {
      */
     private void shutdown() {
         try {
+            fileWriter.close();
             serverSocket.close();
         } catch (IOException ioe) {
             logger.info(ioe.getMessage());

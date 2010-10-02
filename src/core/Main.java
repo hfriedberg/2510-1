@@ -5,7 +5,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.logging.Formatter;
 import java.util.logging.ConsoleHandler;
@@ -29,9 +28,17 @@ public class Main {
     static String algorithm;
     static int numProcesses;
     public static final int PORT = 3333;
-    static final Logger logger = Logger.getLogger("Main");
+    static final Logger logger = Logger.getLogger("core.Main");
     public static String[] hostNames;
     static int processID;
+    static String HOST;
+    
+    static {
+        try {
+            HOST = InetAddress.getLocalHost().getHostName();
+        } catch (Exception e) {
+        }
+    }
     
     private Main() {}
 
@@ -42,11 +49,9 @@ public class Main {
      */
     public static void main(String[] args) throws Exception {
         
-        logger.setLevel(Level.ALL);
-        configureLogging();
+        configureLogging(Level.ALL);
         
         JSONArray tasks = parseInput();
-        System.exit(0);
         new Process(processID, tasks).run();
     }
 
@@ -73,7 +78,7 @@ public class Main {
         // get parameters from the json object:
         algorithm = (String)obj.get("synchronization_technique");
         numProcesses = ((Long)obj.get("process_number")).intValue();
-        
+        hostNames = new String[numProcesses];
         discoverPeers();
         
         return (JSONArray)obj.get((processID + 1) + "");
@@ -86,19 +91,15 @@ public class Main {
     public static String getGUID()
     {
         StringBuilder sb = new StringBuilder();
-        try {
-            sb.append(InetAddress.getLocalHost().getHostName());
-        } catch (UnknownHostException uhe) {
-            sb.append("localhost");
-        }
-        sb.append('-');
+        sb.append(HOST);
+        sb.append('_');
         sb.append(ManagementFactory.getRuntimeMXBean().getName().substring(0, 4));
-        sb.append('-');
+        sb.append('_');
         sb.append(System.currentTimeMillis() % 1000);
-        sb.append('-');
+        sb.append('_');
         sb.append(System.nanoTime() % 1000);
         String guid = sb.toString();
-        logger.log(Level.INFO, "generating GUID: {0}", guid);
+        logger.info(String.format("generating GUID: %s", guid));
         return guid;
     }
     
@@ -111,19 +112,22 @@ public class Main {
         File dir = new File("peer-info");
         if (!dir.exists()) {
             dir.mkdir();
+            dir.deleteOnExit();
         }
         
         String myID = getGUID();
         
         // touch a file with name as guid
         try {
-            new File("peer-info/" + myID).createNewFile();
+            File f = new File("peer-info/" + myID);
+            f.createNewFile();
+            f.deleteOnExit();
         } catch (Exception e) {
             logger.warning(e.getMessage());
         }
         
         String[] files = dir.list();
-        logger.info("\ntrying to discover other peers...");
+        logger.info("trying to discover other peers...");
         while (files.length < numProcesses) {
             files = dir.list();
             try {
@@ -132,16 +136,17 @@ public class Main {
                 logger.warning(ie.getMessage());
             }
         }
+        logger.fine(Arrays.toString(files));
         
         Arrays.sort(files);
         for (int i=0; i < files.length; i++) {
             if (files[i].equals(myID)) {
-                logger.log(Level.FINE, "pID is {0}", i);
+                logger.fine(String.format("pID is %d", i));
                 processID = i;
             } else {
-                String host = files[i].split("-")[0];
-                logger.fine(String.format("process %d is on %s\n", i, host));
-                hostNames[i] = host;
+                String host = files[i].split("_")[0];
+                logger.fine(String.format("process %d is on %s", i, host));
+                hostNames[i] = (host.equals(HOST))? "localhost": host;
             }
         }
         
@@ -150,12 +155,12 @@ public class Main {
     /**
      * 
      */
-    private static void configureLogging() {
+    private static void configureLogging(Level level) {
         logger.setUseParentHandlers(false);
         Handler h = new ConsoleHandler();
         h.setFormatter(new Formatter() {
           @Override public String format(LogRecord record) {
-            return String.format("(%s):\t%s.%s:\t\"%s\"",
+            return String.format("(%s):\t%s.%s:\t%s\n",
                     record.getLevel(),
                     record.getSourceClassName(),
                     record.getSourceMethodName(),
@@ -163,5 +168,8 @@ public class Main {
           }
         });
         logger.addHandler(h);
+        
+        logger.setLevel(level);
+        logger.getHandlers()[0].setLevel(level);
     }
 }
