@@ -51,6 +51,12 @@ public class Main {
         
         configureLogging(Level.ALL);
 
+        // remove existing output file
+        File f = new File(FILENAME);
+        if (f.exists()) {
+            f.delete();
+        }
+        
         JSONArray tasks = parseInput();
         new Process(processID, tasks).run();
     }

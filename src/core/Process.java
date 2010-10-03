@@ -1,10 +1,8 @@
 package core;
 
-import java.nio.channels.FileChannel;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayDeque;
@@ -13,7 +11,6 @@ import java.util.Queue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.logging.Logger;
 import static core.Message.Type;
-import java.nio.channels.FileLock;
 import org.json.simple.JSONArray;
 
 /**
@@ -30,7 +27,7 @@ public class Process implements Runnable
     private ServerSocket serverSocket;
     private Queue<Message> messages;
     private boolean hasToken;
-    //private FileWriter fileWriter;
+    private FileWriter writer;
     private static final Logger logger = Logger.getLogger("core.Main");
 
     public Process(int ID, JSONArray taskArray) throws IOException {
@@ -39,6 +36,7 @@ public class Process implements Runnable
         tasks = new ArrayDeque<Task>();
         serverSocket = new ServerSocket(pID + Main.PORT);
         messages = new PriorityBlockingQueue<Message>();
+        writer = new FileWriter(Main.FILENAME, true);
 
         for (int j = 0; j < taskArray.size(); j++) {
             JSONArray jsonTask = (JSONArray) taskArray.get(j);
@@ -186,11 +184,11 @@ public class Process implements Runnable
      * @param task
      */
     private void appendToFile(Task task) throws IOException {
-        FileWriter writer = null;
+        //FileWriter writer = null;
         try {
             
             // write to the file
-            writer = new FileWriter(Main.FILENAME, true);
+            //writer = new FileWriter(Main.FILENAME, true);
             logger.fine(String.format("performing task, %s", task));
             writer.write(String.format("%d, %d, %d, %s\n",
                     task.startTime,
@@ -199,27 +197,9 @@ public class Process implements Runnable
                     (task.action == Task.READ) ? "read" : "write"));
             writer.flush();
         } finally {
-            writer.close();
+            //writer.close();
         }
     }
-    
-//    /**
-//     * 
-//     * @param task
-//     */
-//    private void appendToFile(Task task) {
-//        try {
-//            logger.fine(String.format("performing task, %s", task));
-//            fileWriter.write(String.format("%d, %d, %d, %s\n",
-//                    task.startTime,
-//                    task.startTime + task.duration,
-//                    this.pID,
-//                    (task.action == Task.READ) ? "read" : "write"));
-//            fileWriter.flush();
-//        } catch (IOException ioe) {
-//            logger.warning(ioe.getMessage());
-//        }
-//    }
 
     /**
      * 
@@ -242,6 +222,7 @@ public class Process implements Runnable
      */
     private void shutdown() {
         try {
+            writer.close();
             serverSocket.close();
         } catch (IOException ioe) {
             logger.warning(ioe.getMessage());
