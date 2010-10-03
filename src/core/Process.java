@@ -1,8 +1,10 @@
 package core;
 
+import java.nio.channels.FileChannel;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayDeque;
@@ -11,6 +13,7 @@ import java.util.Queue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.logging.Logger;
 import static core.Message.Type;
+import java.nio.channels.FileLock;
 import org.json.simple.JSONArray;
 
 /**
@@ -27,7 +30,7 @@ public class Process implements Runnable
     private ServerSocket serverSocket;
     private Queue<Message> messages;
     private boolean hasToken;
-    private FileWriter fileWriter;
+    //private FileWriter fileWriter;
     private static final Logger logger = Logger.getLogger("core.Main");
 
     public Process(int ID, JSONArray taskArray) throws IOException {
@@ -93,7 +96,7 @@ public class Process implements Runnable
         File sharedFile = new File(Main.FILENAME);
         try {
             sharedFile.createNewFile();
-            fileWriter = new FileWriter(sharedFile);
+            //fileWriter = new FileWriter(sharedFile);
         } catch (IOException ioe) {
             logger.warning(ioe.getMessage());
         }
@@ -134,8 +137,14 @@ public class Process implements Runnable
             // perform the task and pass the token
             if (hasToken) {
                 if (!tasks.isEmpty()) {
+                    
+                    // dequeue the next task and write to the file
                     task = tasks.poll();
-                    appendToFile(task);
+                    try {
+                        appendToFile(task);
+                    } catch (IOException ioe) {
+                        logger.warning(ioe.getMessage());
+                    }
 
                     // if we are done with all tasks
                     // then notify other peers
@@ -150,7 +159,6 @@ public class Process implements Runnable
                 try {
                     connections[(pID + 1) % Main.numProcesses].write(
                             new Message(Type.TOKEN, null));
-                    //logger.fine("token passed");
                 } catch (IOException ioe) {
                     logger.warning(ioe.getMessage());
                 }
@@ -159,7 +167,6 @@ public class Process implements Runnable
             // get the next message
             if (!messages.isEmpty()) {
                 msg = messages.poll();
-                //logger.finer(String.format("received message: %s", msg.toString()));
                 switch (msg.type) {
                     case TOKEN:
                         logger.fine("token obtained");
@@ -178,18 +185,41 @@ public class Process implements Runnable
      * 
      * @param task
      */
-    private void appendToFile(Task task) {
+    private void appendToFile(Task task) throws IOException {
+        FileWriter writer = null;
         try {
+            
+            // write to the file
+            writer = new FileWriter(Main.FILENAME, true);
             logger.fine(String.format("performing task, %s", task));
-            fileWriter.write(String.format("%d, %d, %d, %s\n",
+            writer.write(String.format("%d, %d, %d, %s\n",
                     task.startTime,
                     task.startTime + task.duration,
                     this.pID,
                     (task.action == Task.READ) ? "read" : "write"));
-        } catch (IOException ioe) {
-            logger.warning(ioe.getMessage());
+            writer.flush();
+        } finally {
+            writer.close();
         }
     }
+    
+//    /**
+//     * 
+//     * @param task
+//     */
+//    private void appendToFile(Task task) {
+//        try {
+//            logger.fine(String.format("performing task, %s", task));
+//            fileWriter.write(String.format("%d, %d, %d, %s\n",
+//                    task.startTime,
+//                    task.startTime + task.duration,
+//                    this.pID,
+//                    (task.action == Task.READ) ? "read" : "write"));
+//            fileWriter.flush();
+//        } catch (IOException ioe) {
+//            logger.warning(ioe.getMessage());
+//        }
+//    }
 
     /**
      * 
@@ -212,7 +242,6 @@ public class Process implements Runnable
      */
     private void shutdown() {
         try {
-            fileWriter.close();
             serverSocket.close();
         } catch (IOException ioe) {
             logger.warning(ioe.getMessage());
