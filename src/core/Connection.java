@@ -37,7 +37,7 @@ public class Connection implements Runnable {
      * @throws IOException
      */
     void write(Message message) throws IOException {
-        message.timeStamp();
+        //message.timeStamp();
         output.writeObject(message);
         output.flush();
     }
@@ -55,6 +55,8 @@ public class Connection implements Runnable {
         // message loop
         do {
             try {
+                
+                // get a message and add it to the queue
                 msg = (Message) input.readObject();
                 messages.add(msg);
                 if(msg.type == Type.END) {

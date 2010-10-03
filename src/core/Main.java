@@ -139,7 +139,7 @@ public class Main {
         while (files.length < numProcesses) {
             files = dir.list();
             try {
-                Thread.sleep((int)(Math.random()*800));
+                Thread.sleep((int)(Math.random()*500));
             } catch (InterruptedException ie) {
                 logger.warning(ie.getMessage());
             }

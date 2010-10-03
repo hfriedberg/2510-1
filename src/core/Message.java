@@ -28,9 +28,19 @@ public class Message implements Comparable<Message>, Serializable
      * @param type
      * @param content
      */
-    Message(Message.Type type, String content) {
+    Message(Type type, String content) {
         this.type = type;
         this.content = content;
+    }
+    
+    /**
+     * 
+     * @param type
+     * @param timeStamp
+     */
+    Message(Type type, long timeStamp) {
+        this.type = type;
+        this.timestamp = timeStamp;
     }
 
     /**
@@ -38,6 +48,14 @@ public class Message implements Comparable<Message>, Serializable
      */
     void timeStamp() {
        this.timestamp = System.currentTimeMillis();
+    }
+    
+    /**
+     * 
+     * @param time
+     */
+    void setTimeStamp(long time) {
+        this.timestamp = time;
     }
 
     /**

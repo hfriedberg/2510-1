@@ -22,12 +22,19 @@ public class Process implements Runnable
 {
 
     private int pID;
+    private long clock;
     private Deque<Task> tasks;
     private Connection[] connections;
     private ServerSocket serverSocket;
     private Queue<Message> messages;
     private boolean hasToken;
     private FileWriter writer;
+    
+    // statistics
+//    private int numMsgSent, numMsgReceived, numAccess;
+//    private List<Integer> waitTimes;
+    
+    
     private static final Logger logger = Logger.getLogger("core.Main");
 
     public Process(int ID, JSONArray taskArray) throws IOException {
@@ -118,7 +125,8 @@ public class Process implements Runnable
      * 
      */
     private void tokenRing() {
-        Task task = null;
+
+        clock = 1;
         Message msg = null;
         int activePeers = Main.numProcesses;
 
@@ -130,6 +138,8 @@ public class Process implements Runnable
 
         // maintain the ring wile peers are still active
         while (activePeers > 1 || !tasks.isEmpty()) {
+            
+            //clock++;
 
             // if we have the token and a task,
             // perform the task and pass the token
@@ -137,26 +147,37 @@ public class Process implements Runnable
                 if (!tasks.isEmpty()) {
                     
                     // dequeue the next task and write to the file
-                    task = tasks.poll();
-                    try {
-                        appendToFile(task);
-                    } catch (IOException ioe) {
-                        logger.warning(ioe.getMessage());
-                    }
+                    // TODO: the tasks are assumed to be given in order
+                    Task task = tasks.peek();
+                    if (this.clock >= task.startTime) {
+                        tasks.poll();
+                        try {
+                            
+                            // write to the shared file:
+                            appendToFile(task);
+                            
+                            // simulate work during duration of task:
+                            clock += task.duration;
+                            
+                        } catch (IOException ioe) {
+                            logger.warning(ioe.getMessage());
+                        }
 
-                    // if we are done with all tasks
-                    // then notify other peers
-                    if (tasks.isEmpty()) {
-                        logger.info("tasks complete");
-                        multicast(new Message(Type.IDLE, null));
+                        // if we are done with all tasks
+                        // then notify other peers
+                        if (tasks.isEmpty()) {
+                            logger.info("tasks complete");
+                            multicast(new Message(Type.IDLE, clock));
+                        }
                     }
+                        
                 }
 
                 // pass the token to the next process
                 hasToken = false;
                 try {
-                    connections[(pID + 1) % Main.numProcesses].write(
-                            new Message(Type.TOKEN, null));
+                    int next = (pID + 1) % Main.numProcesses;
+                    connections[next].write(new Message(Type.TOKEN, clock));
                 } catch (IOException ioe) {
                     logger.warning(ioe.getMessage());
                 }
@@ -165,6 +186,7 @@ public class Process implements Runnable
             // get the next message
             if (!messages.isEmpty()) {
                 msg = messages.poll();
+                clock = Math.max(clock, msg.timestamp);
                 switch (msg.type) {
                     case TOKEN:
                         logger.fine("token obtained");
@@ -184,20 +206,22 @@ public class Process implements Runnable
      * @param task
      */
     private void appendToFile(Task task) throws IOException {
-        //FileWriter writer = null;
+//        FileWriter writer = null;
         try {
             
             // write to the file
-            //writer = new FileWriter(Main.FILENAME, true);
+//            writer = new FileWriter(Main.FILENAME, true);
             logger.fine(String.format("performing task, %s", task));
             writer.write(String.format("%d, %d, %d, %s\n",
-                    task.startTime,
-                    task.startTime + task.duration,
-                    this.pID,
+//                    task.startTime,
+//                    task.startTime + task.duration,
+                    clock,
+                    clock + task.duration,
+                    this.pID + 1,
                     (task.action == Task.READ) ? "read" : "write"));
             writer.flush();
         } finally {
-            //writer.close();
+//            writer.close();
         }
     }
 

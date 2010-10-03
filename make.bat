@@ -20,7 +20,6 @@ goto end
 rem # runs the project
 REM ##################
 :run
-echo run
 java -cp bin;%CLASSP% core.%MAIN%
 goto end
 
