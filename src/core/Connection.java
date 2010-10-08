@@ -9,11 +9,6 @@ import java.net.Socket;
 import java.util.Queue;
 import static core.Message.Type;
 
-/**
- *
- * @author Yann Le Gall
- * ylegall@gmail.com
- */
 public class Connection implements Runnable {
 
     private Socket socket;
@@ -31,22 +26,13 @@ public class Connection implements Runnable {
         this.messages = messages;
     }
 
-    /**
-     * 
-     * @param message
-     * @throws IOException
-     */
-    void write(Message message) throws IOException {
+	void write(Message message) throws IOException {
         //message.timeStamp();
         output.writeObject(message);
         output.flush();
     }
     
 
-    /**
-     *
-     */
-    @Override
     public void run() {
 
         connected = true;

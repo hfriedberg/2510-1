@@ -13,11 +13,6 @@ import java.util.logging.Logger;
 import static core.Message.Type;
 import org.json.simple.JSONArray;
 
-/**
- * 
- * 
- * 
- */
 public class Process implements Runnable
 {
 
@@ -55,10 +50,6 @@ public class Process implements Runnable
         makeConnections();
     }
 
-    /**
-     * 
-     * @throws IOException
-     */
     private void makeConnections() throws IOException {
         connections = new Connection[Main.numProcesses];
 
@@ -91,10 +82,6 @@ public class Process implements Runnable
 
     }
 
-    /**
-     * 
-     */
-    @Override
     public void run() {
 
         // create the shared file
@@ -121,90 +108,11 @@ public class Process implements Runnable
         shutdown();
     }
 
-    /**
-     * 
-     */
-    private void tokenRing() {
+    // probably not do this
+	private void tokenRing() {
 
-        clock = 1;
-        Message msg = null;
-        int activePeers = Main.numProcesses;
+	}
 
-        // process 0 starts with the token
-        if (pID == 0) {
-            hasToken = true;
-            msg = new Message(Type.TOKEN, null);
-        }
-
-        // maintain the ring wile peers are still active
-        while (activePeers > 1 || !tasks.isEmpty()) {
-            
-            //clock++;
-
-            // if we have the token and a task,
-            // perform the task and pass the token
-            if (hasToken) {
-                if (!tasks.isEmpty()) {
-                    
-                    // dequeue the next task and write to the file
-                    // TODO: the tasks are assumed to be given in order
-                    Task task = tasks.peek();
-                    if (this.clock >= task.startTime) {
-                        tasks.poll();
-                        try {
-                            
-                            // write to the shared file:
-                            appendToFile(task);
-                            
-                            // simulate work during duration of task:
-                            clock += task.duration;
-                            
-                        } catch (IOException ioe) {
-                            logger.warning(ioe.getMessage());
-                        }
-
-                        // if we are done with all tasks
-                        // then notify other peers
-                        if (tasks.isEmpty()) {
-                            logger.info("tasks complete");
-                            multicast(new Message(Type.IDLE, clock));
-                        }
-                    }
-                        
-                }
-
-                // pass the token to the next process
-                hasToken = false;
-                try {
-                    int next = (pID + 1) % Main.numProcesses;
-                    connections[next].write(new Message(Type.TOKEN, clock));
-                } catch (IOException ioe) {
-                    logger.warning(ioe.getMessage());
-                }
-            }
-
-            // get the next message
-            if (!messages.isEmpty()) {
-                msg = messages.poll();
-                clock = Math.max(clock, msg.timestamp);
-                switch (msg.type) {
-                    case TOKEN:
-                        logger.fine("token obtained");
-                        hasToken = true;
-                        break;
-                    case IDLE:
-                        logger.fine("received idle message");
-                        activePeers--;
-                        break;
-                }
-            }
-        }
-    }
-
-    /**
-     * 
-     * @param task
-     */
     private void appendToFile(Task task) throws IOException {
 //        FileWriter writer = null;
         try {
@@ -225,10 +133,6 @@ public class Process implements Runnable
         }
     }
 
-    /**
-     * 
-     * @param message
-     */
     private void multicast(Message message) {
         for (int i = 0; i < connections.length; i++) {
             if (i != this.pID) {
@@ -241,9 +145,6 @@ public class Process implements Runnable
         }
     }
 
-    /**
-     * 
-     */
     private void shutdown() {
         try {
             writer.close();

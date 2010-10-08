@@ -1,11 +1,6 @@
 
 package core;
 
-/**
- *  @author Yann Le Gall
- *  ylegall@gmail.com
- * 
- */
 public class Task {
     
     public static final char READ = 'r';

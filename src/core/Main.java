@@ -17,11 +17,6 @@ import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 
 
-/**
- *  @author Yann Le Gall
- *  ylegall@gmail.com
- * 
- */
 public class Main {
 
     static final String FILENAME = "out.txt";
@@ -42,12 +37,7 @@ public class Main {
     
     private Main() {}
 
-    /**
-     * 
-     * @param args
-     * @throws Exception
-     */
-    public static void main(String[] args) throws Exception {
+   public static void main(String[] args) throws Exception {
         
         configureLogging(Level.ALL);
 
@@ -61,13 +51,7 @@ public class Main {
         new Process(processID, tasks).run();
     }
 
-    /**
-     * 
-     * @param pid
-     * @return
-     * @throws Exception
-     */
-    private static JSONArray parseInput() throws Exception {
+   private static JSONArray parseInput() throws Exception {
         FileReader fr = null;
         JSONObject obj = null;
         JSONParser parser = new JSONParser();
@@ -90,11 +74,7 @@ public class Main {
         return (JSONArray)obj.get((processID + 1) + "");
     }
     
-    /**
-     * 
-     * @return
-     */
-    public static String getGUID()
+   public static String getGUID()
     {
         StringBuilder sb = new StringBuilder();
         sb.append(HOST);
@@ -109,10 +89,7 @@ public class Main {
         return guid;
     }
     
-    /**
-     * 
-     */
-    public static void discoverPeers() {
+   public static void discoverPeers() {
         
         // create a folder on AFS to
         // store peer information
@@ -161,10 +138,7 @@ public class Main {
         
     }
     
-    /**
-     * 
-     */
-    private static void configureLogging(Level level) {
+   private static void configureLogging(Level level) {
         logger.setUseParentHandlers(false);
         Handler h = new ConsoleHandler();
         h.setFormatter(new Formatter() {
