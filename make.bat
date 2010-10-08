@@ -1,7 +1,6 @@
 @echo off
 
 REM ######## Variables
-set CLASSP=.;lib\*
 set MAIN=Main
 REM #######################
 
@@ -14,13 +13,13 @@ REM ####################
 :make
 echo make
 if not exist bin\ mkdir bin
-javac -sourcepath src -d bin -classpath %CLASSP% src/core/%MAIN%.java
+javac -sourcepath src -d bin -classpath %CLASSPATH% src/core/%MAIN%.java
 goto end
 
 rem # runs the project
 REM ##################
 :run
-java -cp bin;%CLASSP% core.%MAIN%
+java -cp bin;%CLASSPATH% core.%MAIN%
 goto end
 
 rem # cleans generated files
