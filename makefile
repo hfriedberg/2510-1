@@ -4,7 +4,6 @@
 
 SHELL = /bin/bash
 MAIN = Main
-CLASSPATH = lib/*:
 
 #=============================
 #  build targets  
