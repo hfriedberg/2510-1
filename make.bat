@@ -13,7 +13,7 @@ REM ####################
 :make
 echo make
 if not exist bin\ mkdir bin
-javac -sourcepath src -d bin -classpath %CLASSPATH% src/core/%MAIN%.java
+javac -sourcepath src -d bin -classpath "%CLASSPATH%" src/core/%MAIN%.java
 goto end
 
 rem # runs the project
