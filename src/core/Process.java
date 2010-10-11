@@ -26,7 +26,7 @@ public class Process implements Runnable
     private FileWriter writer;
     
     // statistics
-//    private int numMsgSent, numMsgReceived, numAccess;
+    private int numMsgSent, numMsgReceived, numAccess;
 //    private List<Integer> waitTimes;
     
     
@@ -96,9 +96,13 @@ public class Process implements Runnable
         // run an algorithm
         logger.info(String.format("starting %s algorithm\n", Main.algorithm));
         if (Main.algorithm.equals("tokenless")) {
-            // TODO: implement
+            tokenlessAlgorithm();
         } else {
-            tokenRing();
+			try {
+            	tokenAlgorithm();
+			} catch (Exception e) {
+				// probably won't happen. 
+			}
         }
 
         // close connections:
@@ -108,8 +112,69 @@ public class Process implements Runnable
         shutdown();
     }
 
-    // probably not do this
-	private void tokenRing() {
+	private void tokenAlgorithm() throws IOException{
+		clock = 1;								// init clock to 1
+		int activePeers = Main.numProcesses; 	// init the  number of active peers 
+		Message msg;
+		boolean hasToken;
+
+		if (pID == 0) {
+			hasToken = true;
+		} else {
+			hasToken = false;
+		}
+
+		while (activePeers > 1 || !tasks.isEmpty()) {
+			if (hasToken && !tasks.isEmpty()) {
+				Task curTask = tasks.peek();
+				if (clock >= curTask.startTime) {
+					tasks.poll();
+
+					appendToFile(curTask);
+
+					clock += curTask.duration;
+
+					if (tasks.isEmpty()) {
+						logger.info("tasks complete");
+						multicast(new Message(Type.IDLE, clock));
+					}
+				}
+			} 
+
+			if (hasToken) {
+				hasToken = false;
+				int nextProc = (this.pID + 1) % Main.numProcesses;
+				logger.fine("passing token to: " + nextProc + " from: " + this.pID);
+				logger.fine("tasks remaining: " + tasks.size() + "\t clock: " + clock);
+				numMsgSent++;
+				// TODO: this probably needs to be synchronized in some way?
+				// pass the token to the next proccess in the ring. 
+				connections[nextProc].write(new Message(Type.TOKEN, clock));
+			} 
+			
+			// handle messages if have them
+			if (!messages.isEmpty()) {
+				msg = messages.poll();
+				numMsgReceived++;
+				clock = Math.max(clock, msg.timestamp);
+				
+				switch (msg.type) {
+					case TOKEN:
+						logger.fine("token obtained");
+						hasToken = true;
+						break;
+					case IDLE:
+						logger.fine("idle message recieved");
+						activePeers--;
+						break;
+					default:
+						logger.fine("unexpected message recieved");
+				}
+			}
+		}
+	}
+
+	private void tokenlessAlgorithm() {
 
 	}
 

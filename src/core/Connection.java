@@ -27,7 +27,6 @@ public class Connection implements Runnable {
     }
 
 	void write(Message message) throws IOException {
-        //message.timeStamp();
         output.writeObject(message);
         output.flush();
     }
@@ -45,14 +44,15 @@ public class Connection implements Runnable {
                 // get a message and add it to the queue
                 msg = (Message) input.readObject();
                 messages.add(msg);
+
                 if(msg.type == Type.END) {
                     connected = false;
                 }
 
             } catch (IOException ex) {
                 logger.warning(ex.getMessage());
-                break; // close connection
-            } catch (ClassNotFoundException ex) {
+                break;
+			} catch (ClassNotFoundException ex) {
                 logger.severe(ex.getMessage());
                 continue;
             }
