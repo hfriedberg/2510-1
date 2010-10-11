@@ -1,1 +1,15 @@
-Make sure json_simple-1.1.jar is in your classpath
+To compile and run on linux: 
+
+%> make 
+%> make run
+
+
+To compile and run on windows:
+
+%> make.bat 
+%> make,bat run
+
+Notes:
+
+- Make sure json_simple-1.1.jar is in your classpath
+- input.json is required in order for the program to run 

@@ -19,7 +19,7 @@ goto end
 rem # runs the project
 REM ##################
 :run
-java -cp bin;%CLASSPATH% core.%MAIN%
+java -cp "bin/;%CLASSPATH%" core.%MAIN%
 goto end
 
 rem # cleans generated files
@@ -30,5 +30,5 @@ rmdir /s /q bin
 goto end
 
 :end
-echo.
+echo done.
 PAUSE

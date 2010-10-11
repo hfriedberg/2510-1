@@ -32,12 +32,14 @@ public class Main {
         try {
             HOST = InetAddress.getLocalHost().getHostName();
         } catch (Exception e) {
+            // I really don't like empty exceptions, chances are we won't end up here
+            HOST = "Undefined Host";
         }
     }
     
     private Main() {}
 
-   public static void main(String[] args) throws Exception {
+    public static void main(String[] args) throws Exception {
         
         configureLogging(Level.ALL);
 
@@ -51,7 +53,7 @@ public class Main {
         new Process(processID, tasks).run();
     }
 
-   private static JSONArray parseInput() throws Exception {
+    private static JSONArray parseInput() throws Exception {
         FileReader fr = null;
         JSONObject obj = null;
         JSONParser parser = new JSONParser();
