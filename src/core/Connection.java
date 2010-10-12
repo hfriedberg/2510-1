@@ -31,7 +31,6 @@ public class Connection implements Runnable {
         output.writeObject(message);
         output.flush();
     }
-    
 
     public void run() {
 
@@ -46,12 +45,12 @@ public class Connection implements Runnable {
                 msg = (Message) input.readObject();
                 messages.add(msg);
 
-                if(msg.type == Type.END) {	
-                    connected = false;
-                }
+                /*if(msg.type == Type.END) {	
+               	    connected = false;
+                }*/
 
             } catch (IOException ex) {
-                logger.warning(ex.getMessage());
+                //logger.warning(ex.getMessage());
                 break;
 			} catch (ClassNotFoundException ex) {
                 logger.severe(ex.getMessage());

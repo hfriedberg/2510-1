@@ -114,6 +114,8 @@ public class Process implements Runnable
 		if(Main.algorithm.equals("token")) {
 			try {
 				connections[nextpID].write(new Message(Type.END, this.pID));
+				connections[nextpID].disconnect();
+				connections[prevpID].disconnect();
 			} catch (Exception e) {
 				logger.info("Exception during shutdown.");
 			}
@@ -177,7 +179,7 @@ public class Process implements Runnable
 						hasToken = true;
 						break;
 					case IDLE:
-						logger.fine("idle message recieved");
+						logger.fine("idle message received");
 						
 						// timestamp in this case is actually the pID of the now idle process
 						if(msg.timestamp != this.pID){
@@ -185,8 +187,15 @@ public class Process implements Runnable
 							connections[nextpID].write(new Message(Type.IDLE, msg.timestamp));
 						}
 						break;
+					case END:
+						logger.fine("end message received");
+						if(tasks.isEmpty()){
+							connections[nextpID].write(new Message(Type.END, this.pID));
+							return;
+						}
+						break;
 					default:
-						logger.fine("unexpected message recieved");
+						logger.fine("unexpected message received");
 				}
 			}
 		}
