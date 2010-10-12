@@ -46,7 +46,7 @@ public class Connection implements Runnable {
                 msg = (Message) input.readObject();
                 messages.add(msg);
 
-                if(msg.type == Type.END) {
+                if(msg.type == Type.END) {	
                     connected = false;
                 }
 

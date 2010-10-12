@@ -24,7 +24,9 @@ public class Process implements Runnable
     private Queue<Message> messages;
     private boolean hasToken;
     private FileWriter writer;
-    
+   	private int prevpID;
+    static int nextpID;
+
     // statistics
     private int numMsgSent, numMsgReceived, numAccess;
 //    private List<Integer> waitTimes;
@@ -57,7 +59,7 @@ public class Process implements Runnable
 			boolean isClient = false;
 			boolean isServer = false;
 			while(!isClient || !isServer){
-				int prevpID = this.pID - 1;
+				prevpID = this.pID - 1;
 				if (prevpID < 0) {
 					prevpID = Main.numProcesses - 1;
 				}
@@ -70,7 +72,7 @@ public class Process implements Runnable
 					// server isn't running yet - it's okay try again later.
 				}
 
-				int nextpID = (this.pID + 1) % Main.numProcesses;
+				nextpID = (this.pID + 1) % Main.numProcesses;
 				
 				if(!isServer) {
 					connections[nextpID] = new Connection(serverSocket.accept(), messages);
@@ -108,7 +110,16 @@ public class Process implements Runnable
 
         // close connections:
         logger.info("process finished.");
-        multicast(new Message(Type.END, null));
+
+		if(Main.algorithm.equals("token")) {
+			try {
+				connections[nextpID].write(new Message(Type.END, this.pID));
+			} catch (Exception e) {
+				logger.info("Exception during shutdown.");
+			}
+		} else {
+        	multicast(new Message(Type.END, null));
+		}
 
         shutdown();
     }
@@ -137,26 +148,28 @@ public class Process implements Runnable
 
 					if (tasks.isEmpty()) {
 						logger.info("tasks complete");
-						multicast(new Message(Type.IDLE, clock));
+						connections[nextpID].write(new Message(Type.IDLE, this.pID));
 					}
 				}
 			} 
 
 			if (hasToken) {
 				hasToken = false;
-				int nextProc = (this.pID + 1) % Main.numProcesses;
-				logger.fine("passing token to: " + nextProc + " from: " + this.pID);
+				logger.fine("passing token to: " + nextpID + " from: " + this.pID);
 				logger.fine("tasks remaining: " + tasks.size() + "\t clock: " + clock);
 				numMsgSent++;
 				// pass the token
-				connections[nextProc].write(new Message(Type.TOKEN, clock));
+				connections[nextpID].write(new Message(Type.TOKEN, clock));
 			} 
 			
 			// handle messages if have them
 			if (!messages.isEmpty()) {
 				msg = messages.poll();
 				numMsgReceived++;
-				clock = Math.max(clock, msg.timestamp);
+
+				if(msg.type == Type.TOKEN) {
+					clock = Math.max(clock, msg.timestamp);
+				}
 				
 				switch (msg.type) {
 					case TOKEN:
@@ -165,7 +178,12 @@ public class Process implements Runnable
 						break;
 					case IDLE:
 						logger.fine("idle message recieved");
-						activePeers--;
+						
+						// timestamp in this case is actually the pID of the now idle process
+						if(msg.timestamp != this.pID){
+							activePeers--;
+							connections[nextpID].write(new Message(Type.IDLE, msg.timestamp));
+						}
 						break;
 					default:
 						logger.fine("unexpected message recieved");
