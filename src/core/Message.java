@@ -3,8 +3,8 @@ package core;
 
 import java.io.Serializable;
 
-public class Message implements Comparable<Message>, Serializable
-{
+// class for storing messages
+public class Message implements Comparable<Message>, Serializable {
 
     Type type;
     String content;

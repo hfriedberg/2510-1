@@ -52,34 +52,35 @@ public class Process implements Runnable
 
     private void makeConnections() throws IOException {
         connections = new Connection[Main.numProcesses];
+		
+		if(Main.algorithm.equals("token")){
+			boolean isClient = false;
+			boolean isServer = false;
+			while(!isClient || !isServer){
+				int prevpID = this.pID - 1;
+				if (prevpID < 0) {
+					prevpID = Main.numProcesses - 1;
+				}
+				
+				try {
+					connections[prevpID] = new Connection( new Socket(Main.hostNames[prevpID], Main.PORT + prevpID), messages );
+					new Thread(connections[prevpID]).start();
+					isClient = true;
+				} catch (Exception e) {
+					// server isn't running yet - it's okay try again later.
+				}
 
-        // act as a client for to all smaller pIDs:
-        for (int i = 0; i < pID; i++) {
-            connect_loop:
-            while (true) {
-                try {
-                    if (i != pID) {
-                        connections[i] = new Connection(
-                                new Socket(Main.hostNames[i], Main.PORT + i),
-                                messages);
-                        new Thread(connections[i]).start();
-                    }
-                } catch (IOException ioe) {
-                    logger.info(String.format("waiting for peer %d", i));
-                    continue connect_loop;
-                }
-                break connect_loop;
-            }
-        }
+				int nextpID = (this.pID + 1) % Main.numProcesses;
+				
+				if(!isServer) {
+					connections[nextpID] = new Connection(serverSocket.accept(), messages);
+					new Thread(connections[nextpID]).start();
+					isServer = true;
+				}
 
-        // act as a server for all larger pIDs:
-        for (int i = pID + 1; i < Main.numProcesses; i++) {
-            logger.info(String.format("waiting for peer %d", i));
-            connections[i] = new Connection(serverSocket.accept(), messages);
-            new Thread(connections[i]).start();
-        }
-        logger.info("all peers connected\n");
+			}
 
+		}
     }
 
     public void run() {
@@ -147,8 +148,7 @@ public class Process implements Runnable
 				logger.fine("passing token to: " + nextProc + " from: " + this.pID);
 				logger.fine("tasks remaining: " + tasks.size() + "\t clock: " + clock);
 				numMsgSent++;
-				// TODO: this probably needs to be synchronized in some way?
-				// pass the token to the next proccess in the ring. 
+				// pass the token
 				connections[nextProc].write(new Message(Type.TOKEN, clock));
 			} 
 			

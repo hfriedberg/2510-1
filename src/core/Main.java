@@ -22,7 +22,7 @@ public class Main {
     static final String FILENAME = "out.txt";
     static String algorithm;
     static int numProcesses;
-    public static final int PORT = 3333;
+    public static final int PORT = 4242;
     static final Logger logger = Logger.getLogger("core.Main");
     public static String[] hostNames;
     static int processID;
@@ -93,7 +93,7 @@ public class Main {
     
    public static void discoverPeers() {
         
-        // create a folder on AFS to
+        // create a folder on filesystem to
         // store peer information
         File dir = new File("peer-info");
         if (!dir.exists()) {
@@ -118,7 +118,7 @@ public class Main {
         while (files.length < numProcesses) {
             files = dir.list();
             try {
-                Thread.sleep((int)(Math.random()*500));
+                Thread.sleep(500);
             } catch (InterruptedException ie) {
                 logger.warning(ie.getMessage());
             }
@@ -144,7 +144,7 @@ public class Main {
         logger.setUseParentHandlers(false);
         Handler h = new ConsoleHandler();
         h.setFormatter(new Formatter() {
-          @Override public String format(LogRecord record) {
+          public String format(LogRecord record) {
             return String.format("(%s):\t%s.%s:\t%s\n",
                     record.getLevel(),
                     record.getSourceClassName(),

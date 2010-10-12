@@ -9,6 +9,7 @@ import java.net.Socket;
 import java.util.Queue;
 import static core.Message.Type;
 
+// connection class for handling socket connections to other processes 
 public class Connection implements Runnable {
 
     private Socket socket;

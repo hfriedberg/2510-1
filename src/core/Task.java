@@ -1,6 +1,7 @@
 
 package core;
 
+// class for storing Tasks 
 public class Task {
     
     public static final char READ = 'r';
@@ -16,7 +17,6 @@ public class Task {
         this.duration = duration;
     }
     
-    @Override
     public String toString() {
         return String.format("[%d, %c, %d]", startTime, action, duration);
     }
