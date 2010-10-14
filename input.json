@@ -1,5 +1,5 @@
 {
-	"synchronization_technique": "token",
+	"synchronization_technique": "tokenless",
 	"process_number": 4,
 	"1": [[5, "w", 2], [8, "r", 1], [11, "r", 2]],
 	"2": [[4, "r", 1], [5, "r", 1], [7, "r", 5]],

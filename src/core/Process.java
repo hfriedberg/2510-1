@@ -85,33 +85,38 @@ public class Process implements Runnable
 			//Take out extra logging info when everything is done
 			System.out.println("starting connections...");
                         			
-			int numConnections = 0;
+			int numConnections = 0;  // the number of client connections
+			int numServers = 0;      // the number of server connections
 			boolean isServer = false;
 
-		        while (!isServer || numConnections < Main.numProcesses - 1){
-				for(int i=0; i < Main.numProcesses; i++){
-						if (i != this.pID && connections[i] == null){
-						
-				          		try {
-				          			System.out.println("Try to start connection to " + i  + " from " + this.pID);
-					          		connections[i] = new Connection( new Socket(Main.hostNames[i], Main.PORT + i), messages);
-					          		new Thread(connections[i]).start();
-					          		numConnections++;
-					          		System.out.println("number of connections for " + pID + " is " + connections);
-				          		} catch (Exception e){
-				          			//ok to try again, but log for debugging purposes.
-				          			logger.info("server not up yet");
-				          		}
+		        while (numServers < Main.numProcesses - this.pID - 1 || numConnections < this.pID){
+						for(int i=0; i < this.pID; i++){
+								if (connections[i] == null){
+								
+										try {
+											System.out.println("Try to start connection to " + i  + " from " + this.pID);
+											connections[i] = new Connection( new Socket(Main.hostNames[i], Main.PORT + i), messages);
+											new Thread(connections[i]).start();
+											numConnections++;
+											System.out.println("number of connections for " + pID + " is " + connections);
+										} catch (Exception e){
+											//ok to try again, but log for debugging purposes.
+											logger.info("server not up yet");
+										}
+								}
 						}
-				}
-				if(!isServer){
-					logger.info("starting server " + this.pID);
-			        connections[this.pID] = new Connection(serverSocket.accept(), messages);
-			        new Thread(connections[this.pID]).start();
-			        isServer = true;
-			        logger.info("finished server " + this.pID);
-				}
+						if(numServers < Main.numProcesses - this.pID - 1){
+							for(int i=this.pID; i < Main.numProcesses - 1; i++){
+								logger.info("starting server " + i);
+								connections[this.pID] = new Connection(serverSocket.accept(), messages);
+								new Thread(connections[i]).start();
+								numServers++;
+								logger.info("finished server " + i);
+							}
+						}
 			}
+		} else {
+			logger.info("unexpected algorithm type.");
 		}
 		logger.info("made connections");
     }
@@ -182,6 +187,13 @@ public class Process implements Runnable
 					appendToFile(curTask);
 
 					clock += curTask.duration;
+					
+					try {
+						// let's simulate taking some time for this task.
+						Thread.sleep(500*curTask.duration);
+					} catch (Exception e) {
+						// I really don't like exception handling.
+					}
 
 					if (tasks.isEmpty()) {
 						logger.info("tasks complete");
