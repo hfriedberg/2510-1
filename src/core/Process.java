@@ -5,8 +5,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayDeque;
-import java.util.Deque;
+import java.util.LinkedList;
 import java.util.Queue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.logging.Logger;
@@ -18,10 +17,11 @@ public class Process implements Runnable
 
     private int pID;
     private long clock;
-    private Deque<Task> tasks;
+    private Queue<Task> tasks;
     private Connection[] connections;
     private ServerSocket serverSocket;
     private Queue<Message> messages;
+    private Queue<Message> requests;
     private boolean hasToken;
     private FileWriter writer;
    	private int prevpID;
@@ -35,13 +35,13 @@ public class Process implements Runnable
     private static final Logger logger = Logger.getLogger("core.Main");
 
     public Process(int ID, JSONArray taskArray) throws IOException {
-
+        logger.info("creating process...");
         pID = ID;
-        tasks = new ArrayDeque<Task>();
-        serverSocket = new ServerSocket(pID + Main.PORT);
+        tasks = new LinkedList<Task>();
+	serverSocket = new ServerSocket(pID + Main.PORT);
         messages = new PriorityBlockingQueue<Message>();
         writer = new FileWriter(Main.FILENAME, true);
-
+        System.out.println(taskArray);
         for (int j = 0; j < taskArray.size(); j++) {
             JSONArray jsonTask = (JSONArray) taskArray.get(j);
             tasks.add(new Task(
@@ -81,8 +81,39 @@ public class Process implements Runnable
 				}
 
 			}
+		} else if (Main.algorithm.equals("tokenless")){
+			//Take out extra logging info when everything is done
+			System.out.println("starting connections...");
+                        			
+			int numConnections = 0;
+			boolean isServer = false;
 
+		        while (!isServer || numConnections < Main.numProcesses - 1){
+				for(int i=0; i < Main.numProcesses; i++){
+						if (i != this.pID && connections[i] == null){
+						
+				          		try {
+				          			System.out.println("Try to start connection to " + i  + " from " + this.pID);
+					          		connections[i] = new Connection( new Socket(Main.hostNames[i], Main.PORT + i), messages);
+					          		new Thread(connections[i]).start();
+					          		numConnections++;
+					          		System.out.println("number of connections for " + pID + " is " + connections);
+				          		} catch (Exception e){
+				          			//ok to try again, but log for debugging purposes.
+				          			logger.info("server not up yet");
+				          		}
+						}
+				}
+				if(!isServer){
+					logger.info("starting server " + this.pID);
+			        connections[this.pID] = new Connection(serverSocket.accept(), messages);
+			        new Thread(connections[this.pID]).start();
+			        isServer = true;
+			        logger.info("finished server " + this.pID);
+				}
+			}
 		}
+		logger.info("made connections");
     }
 
     public void run() {
@@ -99,7 +130,11 @@ public class Process implements Runnable
         // run an algorithm
         logger.info(String.format("starting %s algorithm\n", Main.algorithm));
         if (Main.algorithm.equals("tokenless")) {
-            tokenlessAlgorithm();
+        	try {
+        	  tokenlessAlgorithm();	
+        	} catch (Exception e) {
+        	  //hopefully won't happen...	
+        	}
         } else {
 			try {
             	tokenAlgorithm();
@@ -201,8 +236,78 @@ public class Process implements Runnable
 		}
 	}
 
-	private void tokenlessAlgorithm() {
+	private void tokenlessAlgorithm() throws IOException {
+	//takek out extra logging stuff when it's done
+		clock = 1;
+		int activePeers = Main.numProcesses - 1;
+	    Message msg;
+	    int replies = 0;
+	    boolean sentRequest = false;
+	    Task curTask = null;
+	    Message[] requestTable = new Message[Main.numProcesses];
+      
+	    System.out.println(tasks);
+	    while(!tasks.isEmpty()){
+	    	logger.info("working...");
+	    	if(!sentRequest){
+	    		curTask = tasks.peek();
+	    		if (clock >= curTask.startTime) {
+	    			msg = new Message(Type.CS_REQUEST, this.pID, clock);
+	    			sentRequest = true;
+	    			multicast(msg);
+	    			requests.offer(msg);
+	    		}
+	    	}
+			
+	    	if (!messages.isEmpty()) {
+	    		msg = messages.poll();
+	    		numMsgReceived++;
 
+				switch (msg.type) {
+					case CS_REQUEST:
+						clock = Math.max(clock, msg.timestamp);
+						requestTable[msg.sender] = msg;
+						requests.offer(msg);
+						connections[msg.sender].write(new Message(Type.REPLY, clock));
+						break;
+					case REPLY:
+					    if (sentRequest) {
+					      replies++;
+					    }
+					    break;
+					case CS_RELEASE :
+						requests.remove(requestTable[msg.sender]);
+						break;
+					case IDLE:
+						logger.fine("idle message received");
+						// timestamp in this case is actually the pID of the now idle process
+						if(msg.timestamp != this.pID){
+						  activePeers--;
+						}
+						break;
+					case END:
+						logger.fine("end message received");
+						if(tasks.isEmpty()){
+							return;
+						}
+						break;
+					default:
+						logger.fine("unexpected message received");
+				}
+		  }
+		  
+		  Message earliestRequest = requests.peek();
+		  if(replies == activePeers && earliestRequest.sender == this.pID){
+			  tasks.poll();
+			  appendToFile(curTask);
+			  multicast(new Message(Type.CS_RELEASE, this.pID));
+		  }
+    	  
+		  if (tasks.isEmpty()) {
+			  logger.info("tasks complete");
+			  multicast(new Message(Type.IDLE, this.pID));
+		  }  
+      }
 	}
 
     private void appendToFile(Task task) throws IOException {
@@ -229,6 +334,8 @@ public class Process implements Runnable
         for (int i = 0; i < connections.length; i++) {
             if (i != this.pID) {
                 try {
+                	System.out.println(i);
+                	System.out.println(message);
                     connections[i].write(message);
                 } catch (IOException ioe) {
                     logger.warning(ioe.getMessage());

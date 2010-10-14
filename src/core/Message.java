@@ -9,6 +9,7 @@ public class Message implements Comparable<Message>, Serializable {
     Type type;
     String content;
     long timestamp;
+    int sender;
 
     static enum Type {
         ACK,
@@ -16,6 +17,7 @@ public class Message implements Comparable<Message>, Serializable {
         IDLE,
         CS_REQUEST,
         CS_RELEASE,
+        REPLY,
         TOKEN,
         END
     }
@@ -29,6 +31,12 @@ public class Message implements Comparable<Message>, Serializable {
         this.type = type;
         this.timestamp = timeStamp;
     }
+   
+   Message(Type type, int sender, long timeStamp) {
+	   this.type = type;
+	   this.sender = sender;
+	   this.timestamp = timeStamp;
+   }
 
     void timeStamp() {
        this.timestamp = System.currentTimeMillis();
