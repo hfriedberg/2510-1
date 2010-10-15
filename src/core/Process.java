@@ -35,7 +35,6 @@ public class Process implements Runnable
     private static final Logger logger = Logger.getLogger("core.Main");
 
     public Process(int ID, JSONArray taskArray) throws IOException {
-        logger.info("creating process...");
         pID = ID;
         tasks = new LinkedList<Task>();
 	serverSocket = new ServerSocket(pID + Main.PORT);
@@ -83,7 +82,6 @@ public class Process implements Runnable
 			}
 		} else if (Main.algorithm.equals("tokenless")){
 			//Take out extra logging info when everything is done
-			System.out.println("starting connections...");
                         			
 			int numConnections = 0;  // the number of client connections
 			int numServers = 0;      // the number of server connections
@@ -95,28 +93,24 @@ public class Process implements Runnable
 								
 										try {
 											connections[i] = new Connection( new Socket(Main.hostNames[i], Main.PORT + i), messages);
-											new Thread(connections[i]).start();
+											  new Thread(connections[i]).start();
 											numConnections++;
 										} catch (Exception e){
 											//ok to try again, but log for debugging purposes.
-											logger.info("server not up yet");
 										}
 								}
 						}
 						if(numServers < Main.numProcesses - this.pID - 1){
 							for(int i=this.pID+1; i < Main.numProcesses; i++){
-								logger.info("starting server " + i);
 								connections[i] = new Connection(serverSocket.accept(), messages);
 								new Thread(connections[i]).start();
 								numServers++;
-								logger.info("finished server " + i);
 							}
 						}
 			}
 		} else {
 			logger.info("unexpected algorithm type.");
 		}
-		logger.info("made connections");
     }
 
     public void run() {
@@ -137,7 +131,6 @@ public class Process implements Runnable
         	  tokenlessAlgorithm();	
         	} catch (Exception e) {
 		  logger.info(e.toString());
-		  e.printStackTrace();
         	  //hopefully won't happen...	
         	}
         } else {
@@ -277,7 +270,6 @@ public class Process implements Runnable
 	    			msg = new Message(Type.CS_REQUEST, this.pID, clock);
 	    			sentRequest = true;
 	    			multicast(msg);
-				System.out.println("done sending");
 	    			requests.offer(msg);
 	    		}
 	    	}
@@ -285,19 +277,15 @@ public class Process implements Runnable
 	    	while (!messages.isEmpty()) {
 	    		msg = messages.poll();
 	    		numMsgReceived++;
-			System.out.println("looking at a message");
 				switch (msg.type) {
 					case CS_REQUEST:
 						clock = Math.max(clock, msg.timestamp);
 						requestTable[msg.sender] = msg;
 						requests.offer(msg);
-						System.out.println("id: " + pID + " message sender: " + msg.sender);
 						connections[msg.sender].write(new Message(Type.REPLY, clock));
-						System.out.println("sent a reply...");
 						break;
 					case REPLY:
 					    if (sentRequest) {
-					      System.out.println("received a reply");
 					      replies++;
 					    }
 					    break;
@@ -336,12 +324,11 @@ public class Process implements Runnable
 			  multicast(new Message(Type.IDLE, this.pID));
 		  }  
       }
-	}
+}
 
     private void appendToFile(Task task) throws IOException {
 //        FileWriter writer = null;
         try {
-            System.out.println("Try to write to file...");
             // write to the file
 //            writer = new FileWriter(Main.FILENAME, true);
             logger.fine(String.format("performing task, %s", task));
@@ -359,22 +346,14 @@ public class Process implements Runnable
     }
 
     private void multicast(Message message) {
-	System.out.println("should send to " + connections.length + " connections " + message.type);
         for (int i = 0; i < connections.length; i++) {
-	    System.out.println("sender id: " + this.pID);
             if (i != this.pID && connections[i]!= null) {
                 try {
-                	System.out.println(i + " is sending everyone a message: " + message);
                     	connections[i].write(message);
-			System.out.println("sent one message....");
                 } catch (IOException ioe) {
-		    System.out.println("MESSAGE WASN'T SENT");
-                    logger.warning("Could not send message::::" + ioe.getMessage());
+                    logger.warning("Could not send message:" + ioe.getMessage());
                 }
-		System.out.println("increment...");
-            }else if(i != this.pID && connections[i]==null){
-	      System.out.println("NOT CONNECTED.");
-	   }
+            }
         }
     }
 
