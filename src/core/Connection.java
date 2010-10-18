@@ -23,7 +23,7 @@ public class Connection implements Runnable {
     {
         this.socket = socket;
         output = new ObjectOutputStream(socket.getOutputStream());
-        input = new ObjectInputStream(socket.getInputStream());
+ 	input = new ObjectInputStream(socket.getInputStream());
         this.messages = messages;
     }
 

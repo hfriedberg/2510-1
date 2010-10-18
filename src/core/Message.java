@@ -9,7 +9,7 @@ public class Message implements Comparable<Message>, Serializable {
     Type type;
     String content;
     long timestamp;
-    int sender;
+    private int sender;
 
     static enum Type {
         ACK,
@@ -19,7 +19,8 @@ public class Message implements Comparable<Message>, Serializable {
         CS_RELEASE,
         REPLY,
         TOKEN,
-        END
+        END,
+	TEST
     }
 
    Message(Type type, String content) {
@@ -28,7 +29,7 @@ public class Message implements Comparable<Message>, Serializable {
     }
     
    Message(Type type, long timeStamp) {
-        this.type = type;
+	this.type = type;
         this.timestamp = timeStamp;
     }
    
@@ -36,6 +37,10 @@ public class Message implements Comparable<Message>, Serializable {
 	   this.type = type;
 	   this.sender = sender;
 	   this.timestamp = timeStamp;
+   }
+
+   public int sender(){
+	return this.sender;
    }
 
     void timeStamp() {
@@ -47,13 +52,17 @@ public class Message implements Comparable<Message>, Serializable {
     }
 
     public int compareTo(Message o) {
-        return (int) (this.timestamp - o.timestamp);
+	if(this.timestamp != o.timestamp){
+		return (int) (this.timestamp - o.timestamp);
+	}else{
+	 	return (int) (this.sender - o.sender);
+	}
     }
 
     public String toString() {
-        return String.format("{%s:\"%s\":%d}",
+        return String.format("{%s:\"%d\":%d}",
                 type.toString(),
-                content,
+                sender,
                 timestamp);
     }
 

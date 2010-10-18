@@ -14,3 +14,5 @@ Notes:
 - Make sure json_simple-1.1.jar is in your classpath
 - input.json is required in order for the program to run 
 - For every instance that you need you need to run. So if input.json specifies 4 proccesses that means you need to have make run running for times concurrently.
+
+- After running, if the peer-info directory remains for some reason, this needs to be removed before running again.

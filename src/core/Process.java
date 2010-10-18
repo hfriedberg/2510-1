@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.LinkedList;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.logging.Logger;
@@ -29,7 +31,7 @@ public class Process implements Runnable
 
     // statistics
     private int numMsgSent, numMsgReceived, numAccess;
-//    private List<Integer> waitTimes;
+    private List<Long> waitTimes = new ArrayList<Long>();
     
     
     private static final Logger logger = Logger.getLogger("core.Main");
@@ -81,11 +83,9 @@ public class Process implements Runnable
 
 			}
 		} else if (Main.algorithm.equals("tokenless")){
-			//Take out extra logging info when everything is done
                         			
 			int numConnections = 0;  // the number of client connections
 			int numServers = 0;      // the number of server connections
-			boolean isServer = false;
 
 		        while (numServers < Main.numProcesses - this.pID - 1 || numConnections < this.pID){
 						for(int i=0; i < this.pID; i++){
@@ -97,6 +97,7 @@ public class Process implements Runnable
 											numConnections++;
 										} catch (Exception e){
 											//ok to try again, but log for debugging purposes.
+											//logger.info("server not ready yet");
 										}
 								}
 						}
@@ -113,7 +114,7 @@ public class Process implements Runnable
 		}
     }
 
-    public void run() {
+    public void run(){
 
         // create the shared file
         File sharedFile = new File(Main.FILENAME);
@@ -124,6 +125,8 @@ public class Process implements Runnable
             logger.warning(ioe.getMessage());
         }
 
+	long totalStart = System.currentTimeMillis();
+
         // run an algorithm
         logger.info(String.format("starting %s algorithm\n", Main.algorithm));
         if (Main.algorithm.equals("tokenless")) {
@@ -131,6 +134,7 @@ public class Process implements Runnable
         	  tokenlessAlgorithm();	
         	} catch (Exception e) {
 		  logger.info(e.toString());
+		  e.printStackTrace();
         	  //hopefully won't happen...	
         	}
         } else {
@@ -140,6 +144,28 @@ public class Process implements Runnable
 				// probably won't happen. 
 			}
         }
+
+	long totalEnd = System.currentTimeMillis();
+
+	long totalWait = 0;
+	int numWaits = 0;
+	//Log statistics in the output file
+	for(int i=0; i<waitTimes.size(); i++){
+		numWaits++;
+		totalWait += waitTimes.get(i);
+	}
+		
+	int statId = this.pID + 1;
+	try{
+		appendToFile("\nNumber of messages sent for " + statId + " = " + numMsgSent);
+		appendToFile("\nNumber of messages received for " + statId + " = " + numMsgReceived);
+		appendToFile("\nAverage wait time for " + statId + " = " + (float)totalWait/numWaits + " milliseconds.");
+		appendToFile("\nTotal time running for " + statId + " = " + ((float) (totalEnd - totalStart)) + " milliseconds.");
+	}catch(Exception e){
+		//There just won't be statistics in the output file...
+	}
+
+
 
         // close connections:
         logger.info("process finished.");
@@ -153,8 +179,9 @@ public class Process implements Runnable
 				logger.info("Exception during shutdown.");
 			}
 		} else {
+			logger.info("SHUTTING DOWN PROCESS " + this.pID);
 			for(int i = 0; i < Main.numProcesses; i++){
-				if(i!=pID){
+				if(i!=pID && connections[i]!=null){
 			 		try {
 						connections[i].write(new Message(Type.END, this.pID));
 						connections[i].disconnect();
@@ -174,6 +201,7 @@ public class Process implements Runnable
 		int activePeers = Main.numProcesses; 	// init the  number of active peers 
 		Message msg;
 		boolean hasToken;
+		long startTime = 0;
 
 		if (pID == 0) {
 			hasToken = true;
@@ -185,6 +213,11 @@ public class Process implements Runnable
 			if (hasToken && !tasks.isEmpty()) {
 				Task curTask = tasks.peek();
 				if (clock >= curTask.startTime) {
+					if(startTime!=0){
+						waitTimes.add(System.currentTimeMillis() - startTime);
+					}else{
+					 	waitTimes.add(new Long(0));
+					}
 					tasks.poll();
 
 					appendToFile(curTask);
@@ -201,8 +234,13 @@ public class Process implements Runnable
 					if (tasks.isEmpty()) {
 						logger.info("tasks complete");
 						connections[nextpID].write(new Message(Type.IDLE, this.pID));
+					}else{
+						startTime = System.currentTimeMillis();
 					}
 				}
+			}else if(!tasks.isEmpty()){
+			  if(startTime==0)
+			    startTime = System.currentTimeMillis();
 			} 
 
 			if (hasToken) {
@@ -252,89 +290,109 @@ public class Process implements Runnable
 	}
 
 	private void tokenlessAlgorithm() throws IOException {
-	//take out extra logging stuff when it's done
-		clock = 1;
-		int activePeers = Main.numProcesses;
+	    clock = 1;
+	    int activePeers = Main.numProcesses;
 	    Message msg;
 	    int replies = 0;
 	    boolean sentRequest = false;
 	    Task curTask = null;
 	    Message[] requestTable = new Message[Main.numProcesses];
             requests = new PriorityBlockingQueue<Message>();
+            long startTime = 0;
 
-	    while(activePeers > 1 && !tasks.isEmpty()){
-	    	if(!sentRequest){
-	    		curTask = tasks.peek();
+	    while(activePeers > 1 || !tasks.isEmpty()){
+	    	while (!messages.isEmpty()){
+	    		msg = messages.poll();
+			//logger.info(this.pID + " received this message: " + msg);
+	    		numMsgReceived++;
+			clock = Math.max(clock, msg.timestamp);
+			switch (msg.type){
+				case CS_REQUEST:
+					//logger.info(this.pID + " received a request from " + msg.sender() + " at time " + msg.timestamp);
+					if(requestTable[msg.sender()] != null){
+					  requests.remove(requestTable[msg.sender()]);
+					}
+					requestTable[msg.sender()] = msg;
+					requests.offer(msg);
+					Message sendMessage = new Message(Type.REPLY, msg.sender(), clock);
+					multicast(sendMessage);
+					break;
+				case REPLY:
+					//logger.info(this.pID + " received a reply from " + msg.sender());
+					if (sentRequest && msg.sender()==this.pID) {
+						replies++;
+						//logger.info(pID + " has now received " + replies + " replies");
+					}
+					break;
+				case CS_RELEASE:
+					//logger.info(this.pID + " received a release from " + msg.sender());
+					requests.remove(requestTable[msg.sender()]);
+					requestTable[msg.sender()] = null;
+					break;
+				case IDLE:
+					//logger.fine(this.pID + " received an idle message from " + msg.sender());
+					if(msg.sender() != this.pID){
+						activePeers--;
+					}
+					break;
+				case END:
+					if(tasks.isEmpty()){
+						return;
+					}
+					break;
+				default:
+					logger.fine("unexpected message received");
+			}
+		  }
+
+	    	  curTask = tasks.peek();
+		  if(curTask != null && !sentRequest){
 	    		if (clock >= curTask.startTime) {
-				replies = 0;
 	    			msg = new Message(Type.CS_REQUEST, this.pID, clock);
-	    			sentRequest = true;
+				startTime = System.currentTimeMillis();
 	    			multicast(msg);
+				sentRequest = true;
 	    			requests.offer(msg);
 	    		}
-	    	}
-		
-	    	while (!messages.isEmpty()) {
-	    		msg = messages.poll();
-	    		numMsgReceived++;
-				switch (msg.type) {
-					case CS_REQUEST:
-						clock = Math.max(clock, msg.timestamp);
-						requestTable[msg.sender] = msg;
-						requests.offer(msg);
-						connections[msg.sender].write(new Message(Type.REPLY, clock));
-						break;
-					case REPLY:
-					    if (sentRequest) {
-					      replies++;
-					    }
-					    break;
-					case CS_RELEASE :
-						requests.remove(requestTable[msg.sender]);
-						break;
-					case IDLE:
-						logger.fine("idle message received");
-						// timestamp in this case is actually the pID of the now idle process
-						if(msg.timestamp != this.pID){
-						  activePeers--;
-						}
-						break;
-					case END:
-						logger.fine("end message received");
-						if(tasks.isEmpty()){
-							return;
-						}
-						break;
-					default:
-						logger.fine("unexpected message received");
-				}
-		  }
-		  
+	    	 }
+				  
 		  if(!requests.isEmpty()){
 			  Message earliestRequest = requests.peek();
-			  if(replies == activePeers - 1 && earliestRequest.sender == this.pID){
+			  if(replies == Main.numProcesses - 1 && earliestRequest.sender() == this.pID){
+     				  waitTimes.add(System.currentTimeMillis() - startTime);
+				  startTime = 0;
+				  requests.poll();
 				  curTask = tasks.poll();
 				  appendToFile(curTask);
+				  clock += curTask.duration;
+
+				  try {
+					// let's simulate taking some time for this task.
+					Thread.sleep(500*curTask.duration);
+				  } catch (Exception e) {
+					// I really don't like exception handling.
+				  }
+
 				  sentRequest = false;
-				  multicast(new Message(Type.CS_RELEASE, this.pID));
-		 	 }
+				  replies = 0;
+				  multicast(new Message(Type.CS_RELEASE, this.pID, clock));
+
+				  if (tasks.isEmpty()) {
+			  		logger.info("tasks complete");
+			  		multicast(new Message(Type.IDLE, this.pID, clock));
+		  		  }  
+			  }else if(replies == Main.numProcesses - 1){
+			//	logger.info(this.pID + " has these requests: " + requests);
+			  }
 		  }
-		  if (tasks.isEmpty()) {
-			  logger.info("tasks complete");
-			  multicast(new Message(Type.IDLE, this.pID));
-		  }  
-      }
-}
+	    }
+    	}
 
     private void appendToFile(Task task) throws IOException {
-//        FileWriter writer = null;
         try {
             // write to the file
-//            writer = new FileWriter(Main.FILENAME, true);
             logger.fine(String.format("performing task, %s", task));
             writer.write(String.format("%d, %d, %d, %s\n",
-//                    task.startTime,
-//                    task.startTime + task.duration,
                     clock,
                     clock + task.duration,
                     this.pID + 1,
@@ -342,7 +400,18 @@ public class Process implements Runnable
             writer.flush();
         } finally {
 //            writer.close();
-        }
+     	}
+    }
+
+    private void appendToFile(String s) throws IOException {
+        try {
+            // write to the file
+            logger.fine("Writing statistic to file...");
+            writer.write(s);
+            writer.flush();
+        } finally {
+//            writer.close();
+     	}
     }
 
     private void multicast(Message message) {
@@ -350,6 +419,7 @@ public class Process implements Runnable
             if (i != this.pID && connections[i]!= null) {
                 try {
                     	connections[i].write(message);
+			numMsgSent++;
                 } catch (IOException ioe) {
                     logger.warning("Could not send message:" + ioe.getMessage());
                 }
